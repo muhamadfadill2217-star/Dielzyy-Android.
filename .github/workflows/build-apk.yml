@@ -1,3 +1,4 @@
+
 name: Build Dielzyy APK
 
 on:
@@ -8,39 +9,46 @@ permissions:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+
     steps:
-      - name: Checkout build files
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract Android project
+      - name: Extract source
         run: |
           unzip -q source.zip -d extracted
-          echo "PROJECT_DIR=$GITHUB_WORKSPACE/extracted/dielzyy/Metrolist-main" >> "$GITHUB_ENV"
+          PROJECT_DIR=$(find extracted -name settings.gradle.kts -printf '%h\n' | head -n 1)
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          echo "Project found: $PROJECT_DIR"
 
-      - name: Set up Java 25
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Set up Gradle
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: Build Debug APK
         run: |
-          chmod +x ./gradlew
+          cd "$PROJECT_DIR"
+          chmod +x gradlew
           ./gradlew :androidApp:assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Dielzyy-Android-4.3.0-debug
-          path: ${{ env.PROJECT_DIR }}/androidApp/build/outputs/apk/debug/*.apk
+          name: Dielzyy-Android-APK
+          path: extracted/**/androidApp/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
